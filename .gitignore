@@ -1,0 +1,5 @@
+.pio/
+.vscode/
+lib/
+*.o
+.DS_Store
