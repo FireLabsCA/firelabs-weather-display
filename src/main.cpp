@@ -9,6 +9,10 @@
 #include "Config.h"
 #include "Display.h"
 #include "WebUi.h"
+#include "Weather.h"
+#include "CheckIn.h"
+#include "Battery.h"
+#include "Branding.h"
 #include "FirelabsCore.h"
 
 static const uint32_t FALLBACK_PORTAL_MS = 5UL * 60 * 1000;   // reboot, retry wifi
@@ -16,6 +20,26 @@ static const uint32_t SETUP_PORTAL_MS    = 30UL * 60 * 1000;  // fresh first boo
 
 static Config cfg;
 static FirelabsCore core;
+static WeatherBundle bundle;
+static bool weatherMode = false;     // configured and showing weather
+static uint32_t refreshMs = 0;       // effective wake interval, set by the bundle
+
+// Check in with HA, then paint the result (or the error). Until deep sleep lands
+// (next milestone) this just runs on a millis timer instead of a wake cycle.
+static void refresh(const char* wake) {
+  Battery::Reading b = Battery::read();
+  CheckIn::Telemetry tel{b.percent, b.volts, FL_FW_VERSION, wake};
+  int code = 0;
+  Serial.printf("[FL-WX] check-in (%s) batt=%d%% %.2fV\n", wake, b.percent, b.volts);
+  if (CheckIn::run(cfg.webhookUrl, tel, bundle, code)) {
+    Serial.printf("[FL-WX] bundle ok, %u forecast slots\n", bundle.forecastCount);
+    Display::showWeather(bundle, b.percent);
+    refreshMs = (uint32_t)bundle.settings.sleepMin * 60UL * 1000;
+  } else {
+    Serial.printf("[FL-WX] check-in failed, http=%d\n", code);
+    Display::showMessage("Check-in failed", "HA returned " + String(code));
+  }
+}
 
 void setup() {
   Serial.begin(115200);
@@ -63,14 +87,24 @@ void setup() {
     return;
   }
 
-  // Configured. Weather check-in and render come in the next milestone.
-  Serial.println("[FL-WX] configured");
-  Display::showMessage("Ready", "Configured. Weather coming soon.");
+  // Configured: first check-in + render. The web UI and OTA stay reachable.
+  Serial.println("[FL-WX] configured, first check-in");
+  weatherMode = true;
+  refresh("boot");
 }
 
 void loop() {
   core.loop();
   WebUi::loop();
+
+  if (weatherMode) {
+    static uint32_t lastRefresh = 0;
+    uint32_t iv = refreshMs ? refreshMs : (uint32_t)cfg.sleepMin * 60UL * 1000;
+    if (millis() - lastRefresh > iv) {
+      lastRefresh = millis();
+      refresh("timer");
+    }
+  }
 
   static uint32_t hb = 0;
   if (millis() - hb > 3000) {
