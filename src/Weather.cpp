@@ -13,6 +13,7 @@ bool parseBundle(const String& json, WeatherBundle& out) {
   if (deserializeJson(doc, json)) return false;
   out = WeatherBundle{};
 
+  out.location = (const char*)(doc["location"] | "");
   out.updated = (const char*)(doc["updated"] | "");
 
   JsonObjectConst c = doc["current"];
@@ -27,6 +28,9 @@ bool parseBundle(const String& json, WeatherBundle& out) {
   num(c["low"], out.current.low);
   num(c["pop"], out.current.pop);
   out.current.condition = (const char*)(c["condition"] | "");
+
+  out.windUnit = (const char*)(doc["units"]["wind"] | "km/h");
+  out.precipUnit = (const char*)(doc["units"]["precip"] | "mm");
 
   uint8_t n = 0;
   for (JsonObjectConst o : doc["forecast"].as<JsonArrayConst>()) {

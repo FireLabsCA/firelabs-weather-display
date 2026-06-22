@@ -37,7 +37,10 @@ struct WxOta {
 static const uint8_t WX_FORECAST_MAX = 5;
 
 struct WeatherBundle {
+  String location;                         // city/zone label for the header
   String updated;                          // ISO datetime from HA
+  String windUnit = "km/h";                // unit of the source wind/gust sensor
+  String precipUnit = "mm";                // unit of the source precip sensor
   WxCurrent current;
   WxForecast forecast[WX_FORECAST_MAX];
   uint8_t forecastCount = 0;
