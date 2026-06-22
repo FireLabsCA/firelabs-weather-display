@@ -1,0 +1,55 @@
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  release:
+    types: [published]
+
+permissions:
+  contents: write
+
+jobs:
+  firmware:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Cache PlatformIO
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.platformio
+            ~/.cache/pip
+          key: pio-${{ runner.os }}-${{ hashFiles('platformio.ini') }}
+
+      - name: Install PlatformIO
+        run: pip install platformio
+
+      - name: Build (wx)
+        run: pio run -e wx
+
+      - name: Stage binary
+        run: |
+          mkdir -p dist
+          # GITHUB_REF_NAME is "<pr>/merge" on pull_request; flatten the slash so
+          # the cp target is a plain filename.
+          ref="${GITHUB_REF_NAME//\//-}"
+          cp .pio/build/wx/firmware.bin "dist/firelabs-wx-${ref}.bin"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: firmware
+          path: dist/*.bin
+
+      - name: Attach to release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*.bin
