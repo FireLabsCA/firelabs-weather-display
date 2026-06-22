@@ -12,12 +12,6 @@
 static GxEPD2_BW<GxEPD2_420_GDEY042T81, GxEPD2_420_GDEY042T81::HEIGHT> epd(
     GxEPD2_420_GDEY042T81(PIN_EPD_CS, PIN_EPD_DC, PIN_EPD_RST, PIN_EPD_BUSY));
 
-// Weather renders since the last full refresh; survives deep sleep. Partial
-// refreshes are fast and flicker-free but leave faint ghosting, so a full
-// refresh every FULL_EVERY clears it (and the cold-boot render is full).
-RTC_DATA_ATTR static uint32_t wxRenders = 0;
-static const uint32_t FULL_EVERY = 12;  // ~6 h at a 30-min interval
-
 static void header() {
   epd.drawRect(0, 0, epd.width(), epd.height(), GxEPD_BLACK);
   epd.setFont(&FreeSansBold12pt7b);
@@ -27,13 +21,9 @@ static void header() {
   epd.drawLine(14, 52, epd.width() - 14, 52, GxEPD_BLACK);
 }
 
-void Display::begin(bool fromSleep) {
+void Display::begin() {
   SPI.begin(PIN_EPD_CLK, -1, PIN_EPD_MOSI, PIN_EPD_CS);
-  // A cold boot (power-on or OTA reset) does a full panel init, which wipes the
-  // controller's retained image; force the next render full so it doesn't ghost.
-  // A deep-sleep wake keeps state, so a partial refresh is valid.
-  if (!fromSleep) wxRenders = 0;
-  epd.init(115200, !fromSleep, 2, false, SPI, SPISettings(4000000, MSBFIRST, SPI_MODE0));
+  epd.init(115200, true, 2, false, SPI, SPISettings(4000000, MSBFIRST, SPI_MODE0));
   epd.setRotation(0);
 }
 
@@ -307,9 +297,7 @@ static String conditionLabel(const String& cond) {
 
 void Display::showWeather(const WeatherBundle& wx, int batteryPct) {
   const WxCurrent& c = wx.current;
-  if (wxRenders % FULL_EVERY == 0) epd.setFullWindow();        // clears ghosting
-  else epd.setPartialWindow(0, 0, epd.width(), epd.height());  // fast, no flash
-  wxRenders++;
+  epd.setFullWindow();  // full refresh every update: crisp, no ghosting
   epd.firstPage();
   do {
     epd.fillScreen(GxEPD_WHITE);

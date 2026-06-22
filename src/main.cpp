@@ -151,7 +151,7 @@ void setup() {
   const char* wake = wakeReason();
   Serial.printf("\n[FL-WX] wake=%s\n", wake);
 
-  Display::begin(strcmp(wake, "boot") != 0);  // partial-refresh-safe init on wake
+  Display::begin();
   core.apPrefix = "FireLabs WX";
   core.hostPrefix = "fl-wx";
   core.begin();
