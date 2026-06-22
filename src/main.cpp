@@ -79,6 +79,9 @@ void setup() {
 
   MDNS.begin(core.hostname().c_str());
   MDNS.addService("http", "tcp", 80);
+  MDNS.addService("firelabs", "tcp", 80);  // for HA zeroconf discovery
+  MDNS.addServiceTxt("firelabs", "tcp", "model", "WX");
+  MDNS.addServiceTxt("firelabs", "tcp", "mac", WiFi.macAddress());
   WebUi::begin(cfg, core);
 
   if (!cfg.isConfigured()) {

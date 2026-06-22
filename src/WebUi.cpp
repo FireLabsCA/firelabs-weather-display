@@ -1,6 +1,7 @@
 #include "WebUi.h"
 #include "Config.h"
 #include "Page.h"
+#include "Branding.h"
 #include "FirelabsCore.h"
 #include <WebServer.h>
 #include <Update.h>
@@ -21,6 +22,18 @@ void WebUi::begin(Config& cfg, FirelabsCore& core) {
 
   server.on("/", HTTP_GET, servePage);
   server.onNotFound(servePage);
+
+  // Identity for the FireLabs HA integration (config_flow probe + device info).
+  server.on("/api/status", HTTP_GET, []() {
+    JsonDocument d;
+    d["mac"] = WiFi.macAddress();
+    d["model"] = "WX";
+    d["name"] = core_->deviceName;
+    d["fw"] = FL_FW_VERSION;
+    String out;
+    serializeJson(d, out);
+    server.send(200, "application/json", out);
+  });
 
   server.on("/api/config", HTTP_GET, []() {
     JsonDocument d;
