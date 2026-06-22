@@ -18,7 +18,7 @@
 #include "FirelabsCore.h"
 
 static const uint16_t SETUP_WINDOW_MIN = 30;        // unconfigured awake window
-static const uint32_t OTA_WINDOW_MS = 5UL * 60 * 1000;  // button/force-wake window
+static const uint32_t OTA_WINDOW_MS = 60UL * 1000;  // button/power/force-wake window
 static const uint64_t US_PER_MIN = 60ULL * 1000 * 1000;
 
 static Config cfg;
@@ -139,7 +139,7 @@ static void checkInRenderSleep(const char* wake, bool otaWindow) {
     startServices();
     sleepAtMs = millis() + OTA_WINDOW_MS;
     sleepMinutes = ok ? bundle.settings.sleepMin : cfg.sleepMin;
-    Serial.println("[FL-WX] OTA window open (5 min)");
+    Serial.println("[FL-WX] OTA window open (60 s)");
     return;
   }
   deepSleep(ok ? bundle.settings.sleepMin : cfg.sleepMin);
